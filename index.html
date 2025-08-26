@@ -1,0 +1,1892 @@
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自定义主页 - Hyper</title>
+    <style>
+        /* 全局样式 */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            color: #fff;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            transition: background-color 0.5s, color 0.5s;
+        }
+
+        body.light-theme {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+
+        body.dark-theme {
+            background-color: #121212;
+            color: #f5f5f5;
+        }
+
+        /* 视频背景容器 */
+        #video-bg-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+            overflow: hidden;
+        }
+
+        #video-bg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* 图片背景作为回退 */
+        .image-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            z-index: -2;
+        }
+
+        /* 动态渐变背景 */
+        #bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -3;
+        }
+
+        /* 毛玻璃效果 */
+        .glass-effect {
+            backdrop-filter: blur(15px);
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.01);
+        }
+
+        .light-theme .glass-effect {
+            background-color: rgba(255, 255, 255, 16%);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        /* 搜索框样式 */
+        .search-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            width: 90%;
+            max-width: 600px;
+            margin: 40px auto 0;
+        }
+
+        .search-box {
+            display: flex;
+            width: 100%;
+            height: 60px;
+            border-radius: 30px;
+            overflow: hidden;
+            backdrop-filter: blur(15px);
+            background-color: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            animation: boxAppear 0.8s cubic-bezier(0.25, 1.5, 0.5, 1) forwards;
+        }
+
+        .engine-current {
+            flex: 0 0 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #ffffff41;
+            font-size: 16px;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            transition: background 0.3s ease, transform 0.4s ease;
+            animation: slideInLeft 0.6s ease-out forwards;
+        }
+
+        .light-theme .engine-current {
+            color: #333;
+            background: rgba(0, 0, 0, 0);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .engine-current:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            border: none;
+            outline: none;
+            background: transparent;
+            color: #fff;
+            font-size: 16px;
+            padding: 0 20px;
+            animation: fadeIn 1s ease-out forwards;
+        }
+
+        .light-theme input[type="text"] {
+            color: #333;
+        }
+
+        button#searchButton {
+            flex: 0 0 60px;
+            border: none;
+            background: rgba(255, 255, 255, 0);
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s ease, transform 0.4s ease;
+            animation: slideInRight 0.6s ease-out forwards;
+        }
+
+        /* 搜索指示箭头 */
+        .light-theme button#searchButton {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        button#searchButton:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.2) rotate(15deg);
+        }
+
+        button#searchButton img {
+            width: 20px;
+            height: 20px;
+            filter: invert(1);
+        }
+
+        .light-theme button#searchButton img {
+            filter: invert(0);
+        }
+
+        /* 搜索引擎选择面板 */
+        .engine-options {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.8) translateY(10px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            width: 100%;
+            max-width: 600px;
+            padding: 35px;
+            border-radius: 35px;
+            backdrop-filter: blur(15px);
+            background-color: rgba(255, 255, 255, 0.1);
+            position: absolute;
+            top: 70px;
+            z-index: 10;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .light-theme .engine-options {
+            background-color: rgba(255, 255, 255, 0);
+        }
+
+        .engine-options.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: scale(1) translateY(0);
+        }
+
+        .engine-options button {
+            border: none;
+            border-radius: 50px;
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            font-size: 15px;
+            cursor: pointer;
+            backdrop-filter: blur(8px);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+                background 0.3s ease;
+            animation: optionBounce 0.6s ease-out forwards;
+        }
+
+        .light-theme .engine-options button {
+            background: rgba(0, 0, 0, 0.12);
+            color: #333;
+        }
+
+        .engine-options button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.2);
+        }
+
+        /* 时钟 */
+        .clock {
+            text-align: center;
+            margin-top: 7%;
+            font-size: 90px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .light-theme .clock {
+            color: #333;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .context-menu {
+            display: none;
+            position: fixed;
+            z-index: 10000;
+            backdrop-filter: blur(15px);
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 0;
+            min-width: 150px;
+            transform: translateY(-100%);
+            /* 初始位置调整 */
+        }
+
+        .light-theme .context-menu {
+            background-color: rgba(255, 255, 255, 7%);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .context-menu-item {
+            padding: 10px 20px;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .light-theme .context-menu-item {
+            color: #333;
+        }
+
+        .context-menu-item:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .context-menu-item img {
+            width: 16px;
+            height: 16px;
+            filter: invert(1);
+        }
+
+        .light-theme .context-menu-item img {
+            filter: invert(0);
+        }
+
+        /* 快捷链接容器 */
+        .links-container {
+            flex: 1;
+            overflow-y: hidden;
+            margin-top: 20px;
+            position: relative;
+            padding-bottom: 30px;
+        }
+
+        /* 链接布局 */
+        .links {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 0 20px;
+            gap: 20px;
+            max-height: calc(100% - 20px);
+            overflow-y: auto;
+            padding-bottom: 20px;
+            scrollbar-width: none;
+        }
+
+        .links::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+
+        .links a {
+            text-align: center;
+            text-decoration: none;
+            color: white;
+            font-size: 16px;
+            flex-basis: calc(12.5% - 40px);
+            transition: transform 0.3s ease;
+            z-index: 2;
+        }
+
+        .light-theme .links a {
+            color: #333;
+        }
+
+        .links a:hover {
+            transform: translateY(-5px);
+        }
+
+        .links a img {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 5px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .light-theme .links a img {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        /* 设置按钮 */
+        .settings-button {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            border-radius: 40%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+            transition: transform 0.3s ease;
+        }
+
+        .settings-button:hover {
+            transform: scale(1.1);
+        }
+
+        .settings-button img {
+            width: 100%;
+            height: 100%;
+        }
+
+        .settings-button.glass-effect {
+            padding: 10px;
+        }
+
+        /* 弹出层 */
+        .logs-popup,
+        .settings-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px;
+            border-radius: 15px;
+            display: none;
+            z-index: 1002;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        /* 覆盖层 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+        }
+
+        /* 设置界面样式 */
+        .settings-popup h3 {
+            margin-top: 0;
+            color: white;
+        }
+
+        .light-theme .settings-popup h3 {
+            color: #333;
+        }
+
+        .settings-popup input {
+            padding: 12px;
+            width: 100%;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .light-theme .settings-popup input {
+            background: rgba(0, 0, 0, 0.05);
+            color: #333;
+        }
+
+        .settings-popup button {
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+
+        .light-theme .settings-popup button {
+            background: rgba(0, 0, 0, 0.05);
+            color: #333;
+        }
+
+        .settings-popup button:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .light-theme .settings-popup button:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .settings-popup label {
+            display: block;
+            margin-bottom: 5px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .light-theme .settings-popup label {
+            color: rgba(0, 0, 0, 0.8);
+        }
+
+        /* 渐变背景设置项样式 */
+        .gradient-control-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .light-theme .gradient-control-group {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .gradient-control-group label {
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .gradient-control-group input[type="range"] {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .light-theme .gradient-control-group input[type="range"] {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .gradient-control-group input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+        }
+
+        /* 背景样式选择器 */
+        .bg-style-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .bg-style-option {
+            flex: 1;
+            text-align: center;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .light-theme .bg-style-option {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .bg-style-option.active {
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+        }
+
+        .light-theme .bg-style-option.active {
+            background: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 优化后的甩尾动画效果 */
+        .hyperos-bounce {
+            animation: hyperosBounce 0.8s cubic-bezier(0.17, 0.67, 0.21, 0.99);
+        }
+
+        @keyframes hyperosBounce {
+            0% {
+                transform: translateY(0);
+            }
+
+            30% {
+                transform: translateY(-15px);
+            }
+
+            60% {
+                transform: translateY(8px);
+            }
+
+            80% {
+                transform: translateY(-3px);
+            }
+
+            100% {
+                transform: translateY(0);
+            }
+        }
+
+        /* 搜索框动画 */
+        @keyframes boxAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes slideInLeft {
+            0% {
+                transform: translateX(-50%) rotate(-15deg);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateX(0) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInRight {
+            0% {
+                transform: translateX(50%) rotate(15deg);
+                opacity: 0;
+            }
+
+            100% {
+                transform: translateX(0) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes optionBounce {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+
+            60% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes scrollIndicator {
+            0% {
+                transform: translateX(-100%);
+            }
+
+            50% {
+                transform: translateX(250%);
+            }
+
+            100% {
+                transform: translateX(250%);
+            }
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 900px) {
+            .links a {
+                flex-basis: calc(25% - 30px);
+            }
+
+            .clock {
+                font-size: 70px;
+            }
+
+            .search-container {
+                width: 85%;
+            }
+
+            .engine-options {
+                padding: 10px;
+                gap: 8px;
+            }
+
+            .engine-options button {
+                padding: 6px 16px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .links a {
+                flex-basis: calc(33.33% - 20px);
+            }
+
+            .clock {
+                font-size: 50px;
+                margin-top: 15%;
+            }
+
+            .search-box {
+                height: 48px;
+            }
+
+            .engine-current {
+                flex: 0 0 80px;
+                font-size: 14px;
+            }
+
+            input[type="text"] {
+                font-size: 14px;
+                padding: 0 15px;
+            }
+
+            button#searchButton {
+                flex: 0 0 50px;
+            }
+
+            .links {
+                padding: 0 10px;
+                gap: 15px;
+            }
+
+            .links a img {
+                width: 60px;
+                height: 60px;
+            }
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .light-theme ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .light-theme ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .light-theme ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+
+<body class="dark-theme">
+    <!-- 视频背景 -->
+    <div id="video-bg-container">
+        <video id="video-bg" autoplay muted loop>
+            <source src="mp4/a.mp4" type="video/mp4">
+        </video>
+    </div>
+
+    <!-- 图片背景作为回退 -->
+    <div class="image-bg" id="image-bg"></div>
+
+    <!-- 动态渐变背景 -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- 时钟 -->
+    <div class="clock" id="clock">00:00</div>
+
+    <!-- 搜索框 -->
+    <div class="search-container">
+        <div class="search-box">
+            <div class="engine-current" id="currentEngine">百度</div>
+            <input type="text" id="searchInput" placeholder="输入搜索内容...">
+            <button id="searchButton">
+                <img src="favicon.ico" alt="Search">
+            </button>
+        </div>
+
+        <div class="engine-options" id="engineOptions">
+            <!-- 引擎选项由JS动态生成 -->
+        </div>
+    </div>
+
+    <!-- 快捷链接容器 -->
+    <div class="links-container">
+        <div class="links" id="links">
+            <a href="http://aumh.top" target="_blank" style="--link-index: 0;"><img src="IMG/quicklink/icon.png"
+                    alt="MoHe"><br>MoHe</a>
+            <a href="http://117.72.71.202:8090" target="_blank" style="--link-index: 1;"><img
+                    src="IMG/quicklink/logo.png" alt="Blog"><br>Blog</a>
+            <a href="http://117.72.71.202:2002" target="_blank" style="--link-index: 2;"><img
+                    src="IMG/quicklink/pan.png" alt="Pan"><br>Pan</a>
+            <a href="https://bt.cn" target="_blank" style="--link-index: 3;"><img src="IMG/quicklink/btmb.png"
+                    alt="宝塔面板"><br>宝塔面板</a>
+            <a href="https://www.doubao.com/chat/" target="_blank" style="--link-index: 4;"><img src="https://files.codelife.cc/icons/doubao.com.webp"
+                    alt="豆包Ai"><br>豆包Ai</a>
+            <a href="https://iot.mi.com/vela/quickapp/" target="_blank" style="--link-index: 5;"><img
+                    src="https://iot.mi.com/vela/quickapp/logo.png" alt="小米Vela JS应用开发文档"><br>小米VelaJS应用开发文档</a>
+            <a href="https://share.freegpts.org/list" target="_blank" style="--link-index: 6;"><img
+                    src="IMG/quicklink/Ai.svg" alt="Ai"><br>Ai</a>
+            <a href="https://chat.deepseek.com/" target="_blank" style="--link-index: 7;"><img
+                    src="IMG/quicklink/deepseek.svg" alt="deepseek"><br>deepseek</a>
+            <a href="https://www.52pojie.cn/" target="_blank" style="--link-index: 8;"><img
+                    src="https://www.52pojie.cn/favicon.ico" alt="吾爱破解"><br>吾爱破解</a>
+            <a href="https://github.com/" target="_blank" style="--link-index: 9;"><img src="IMG/quicklink/github.svg"
+                    alt="GitHub"><br>GitHub</a>
+            <a href="https://console.jdcloud.com" target="_blank" style="--link-index: 10;"><img
+                    src="IMG/quicklink/jdy.png" alt="Pan"><br>京东云控制台</a>
+            <a href="https://myseller.taobao.com/" target="_blank" style="--link-index: 12;"><img src="https://gw.alicdn.com/imgextra/i4/O1CN01c1QM3W1G1RGlDTPLi_!!6000000000562-2-tps-96-96.png"
+                    alt="千牛"><br>千牛</a>
+            <a href="https://www.zhihu.com" target="_blank" style="--link-index: 15;"><img src="IMG/quicklink/知乎.svg"
+                    alt="知乎"><br>知乎</a>
+            <a href="https://www.bilibili.com" target="_blank" style="--link-index: 13;"><img
+                    src="IMG/quicklink/bilibili.png" alt="哔哩哔哩"><br>哔哩哔哩</a>
+            <a href="https://www.bandbbs.cn/" target="_blank" style="--link-index: 14;"><img src="https://static.cloudflare.ltd/Bandbbs_CDN/PWA/pwa_icon_192.png"
+                    alt="米坛社区 BandBBS"><br>米坛社区 BandBBS</a>
+            <a href="https://chatgpt.com/" target="_blank" style="--link-index: 11;"><img src="IMG/quicklink/ChatGPT.svg"
+                    alt="ChatGPT"><br>ChatGPT</a>
+            <a href="https://www.douyin.com" target="_blank" style="--link-index: 16;"><img src="IMG/quicklink/抖音.svg"
+                    alt="抖音"><br>抖音</a>
+            <a href="https://so.gitee.com/" target="_blank" style="--link-index: 17;"><img
+                    src="https://so.gitee.com/static/logo.svg" alt="Gitee"><br>Gitee</a>
+            <a href="https://www.cloudflare.com" target="_blank" style="--link-index: 18;"><img
+                    src="IMG/quicklink/CloudFlare.png" alt="CloudFlare"><br>CloudFlare</a>
+            <a href="https://www.xiaohongshu.com" target="_blank" style="--link-index: 19;"><img
+                    src="IMG/quicklink/小红书.png" alt="小红书"><br>小红书</a>
+            <a href="https://go.itab.link/" target="_blank" style="--link-index: 20;"><img src="IMG/quicklink/itab.svg"
+                    alt="Itab"><br>Itab</a>
+            <a href="https://lestore.lenovo.com/" target="_blank" style="--link-index: 21;"><img
+                    src="IMG/quicklink/lenovo.ico" alt="lenovo"><br>LenovoStore</a>
+            <a href="https://wx.mail.qq.com/" target="_blank" style="--link-index: 22;"><img
+                    src="IMG/quicklink/qqmail.png" alt="qqmail"><br>QQ-Mail</a>
+            <a href="https://oshwhub.com/" target="_blank" style="--link-index: 23;"><img src="IMG/quicklink/jlc.png"
+                    alt="oshwhub"><br>oshwhub</a>
+            <a href="https://convertio.co/zh/" target="_blank" style="--link-index: 24;"><img
+                    src="IMG/quicklink/convertio.png" alt="convertio"><br>Convertio</a>
+            <a href="https://www.remove.bg/zh/" target="_blank" style="--link-index: 25;"><img
+                    src="IMG/quicklink/RemoveBg.png" alt="Remove.Bg"><br>Remove.Bg</a>
+            <a href="https://www.iconfont.cn/" target="_blank" style="--link-index: 26;"><img
+                    src="IMG/quicklink/iconfont.svg" alt="iconfont"><br>iconfont</a>
+            <a href="https://www.canva.cn" target="_blank" style="--link-index: 27;"><img src="IMG/quicklink/canva.svg"
+                    alt="canva"><br>canva</a>
+            <a href="https://fanyi.baidu.com/" target="_blank" style="--link-index: 28;"><img
+                    src="IMG/quicklink/百度翻译.svg" alt="百度翻译"><br>百度翻译</a>
+            <a href="https://www.photopea.com" target="_blank" style="--link-index: 29;"><img
+                    src="IMG/quicklink/Photopea.svg" alt="Photopea"><br>Photopea</a>
+            <a href="https://www.v2ob.com/douyin" target="_blank" style="--link-index: 30;"><img
+                    src="https://www.v2ob.com/favicon.ico" alt="v2ob"><br>v2ob</a>
+            <a href="https://www.haowallpaper.com/" target="_blank" style="--link-index: 31;"><img
+                    src="https://www.haowallpaper.com/favicon.ico" alt="哲风壁纸"><br>哲风壁纸</a>
+        </div>
+        <div class="scroll-indicator"></div>
+    </div>
+
+    <!-- 日志按钮 -->
+    <div class="settings-button glass-effect" style="right: 70px;" onclick="toggleLogs()">
+        <img src="IMG/quicklink/icon.png" alt="日志">
+    </div>
+
+    <!-- 日志弹出界面 -->
+    <div class="overlay" id="logsOverlay" onclick="toggleLogs()"></div>
+    <div class="logs-popup glass-effect" id="logsPopup">
+        <img src="IMG/about.jpg" alt="日志图片" style="width:100%; backdrop-filter: blur(10px); border-radius: 25px;">
+        <h2 style="color:white;">更新日志</h2>
+        <h4 style="color:rgba(255, 255, 255, 0.9);">
+            <b>增强版更新：</b><br>
+            - 新增动态渐变背景功能<br>
+            - 添加三种背景样式切换<br>
+            - 优化设置界面布局<br>
+            - 增加深浅色主题切换<br>
+            <br>
+            <b>历史记录：</b><br>
+            1.1.0: 新增动态渐变背景功能<br>
+            1.0.4: 添加小米HyperOS甩尾动画效果<br>
+            1.0.3: 增加了导出/导入配置功能<br>
+            1.0.2: 增加自定义快捷连接&自定义壁纸&切换壁纸<br>
+            1.0.1: 修复了搜索按钮无法搜索的问题<br>
+            1.0.0: 首次发布24.10.6<br>
+        </h4>
+    </div>
+
+    <!-- 设置弹出界面 -->
+    <div class="overlay" id="overlay" onclick="toggleSettings()"></div>
+    <div class="settings-popup glass-effect" id="settingsPopup">
+        <h3>设置</h3>
+
+        <h4>背景样式</h4>
+        <div class="bg-style-selector">
+            <div class="bg-style-option active" data-style="image" onclick="setBackgroundStyle('image')">
+                图片背景
+            </div>
+            <div class="bg-style-option" data-style="video" onclick="setBackgroundStyle('video')">
+                视频背景
+            </div>
+            <div class="bg-style-option" data-style="gradient" onclick="setBackgroundStyle('gradient')">
+                动态渐变
+            </div>
+        </div>
+
+        <div id="gradient-settings">
+            <h4>动态渐变背景设置</h4>
+            <div class="gradient-control-group">
+                <label for="gradient-speed">动画速度</label>
+                <input type="range" id="gradient-speed" min="0" max="2" step="0.1" value="0.5">
+            </div>
+            <div class="gradient-control-group">
+                <label for="gradient-opacity">背景不透明度</label>
+                <input type="range" id="gradient-opacity" min="0.2" max="1" step="0.05" value="0.7">
+            </div>
+            <div class="gradient-control-group">
+                <label for="gradient-mix-ratio">混合比例</label>
+                <input type="range" id="gradient-mix-ratio" min="0.2" max="1" step="0.05" value="0.7">
+            </div>
+            <div>
+                <button id="gradient-theme-toggle">切换为浅色主题</button>
+            </div>
+        </div>
+
+        <h4>背景设置</h4>
+        <label for="bgImage">图片背景URL：</label>
+        <input type="text" id="bgImage" placeholder="输入图片URL">
+        <button onclick="changeBackground()">更改图片背景</button>
+
+        <label for="videoBg">视频背景URL：</label>
+        <input type="text" id="videoBg" placeholder="输入视频URL">
+        <button onclick="changeVideoBackground()">更改视频背景</button>
+
+        <button onclick="toggleVideoMute()" id="muteButton">取消静音</button>
+        <button onclick="changeWallpaper()">切换壁纸</button>
+
+        <h4>添加快捷链接</h4>
+        <label for="linkUrl">链接URL：</label>
+        <input type="text" id="linkUrl" placeholder="输入链接">
+        <label for="linkText">链接文字：</label>
+        <input type="text" id="linkText" placeholder="输入显示文字">
+        <label for="linkIcon">图标URL：</label>
+        <input type="text" id="linkIcon" placeholder="输入图标URL">
+        <button onclick="addLink()">添加链接</button>
+
+        <h4>导入/导出设置</h4>
+        <button onclick="exportSettings()">导出设置</button>
+        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importSettings(event)">
+        <button onclick="document.getElementById('importFile').click()">导入设置</button>
+        <button onclick="resetSettings()">重置设置</button>
+
+        <h4>动画设置</h4>
+        <button onclick="toggleHyperOSEffect()" id="hyperosToggle">关闭甩尾动画</button>
+    </div>
+
+    <!-- 右键菜单 -->
+    <!-- 右键菜单 -->
+    <div class="context-menu glass-effect" id="contextMenu">
+        <div class="context-menu-item" onclick="openAddLink()">
+            <img src="IMG/quicklink/add.svg" alt="添加"> 添加快捷链接
+        </div>
+        <div class="context-menu-item" onclick="openWallpaperSettings()">
+            <img src="IMG/quicklink/wallpaper.svg" alt="壁纸"> 设置壁纸
+        </div>
+        <div class="context-menu-item" onclick="toggleTheme()">
+            <img src="IMG/quicklink/theme.svg" alt="主题"> 切换主题
+        </div>
+    </div>
+
+    <script>
+        // 配置保存键名
+        const CONFIG_KEYS = {
+            BG_IMAGE: 'backgroundImage',
+            VIDEO_BG: 'videoBackground',
+            VIDEO_MUTED: 'videoMuted',
+            CUSTOM_LINKS: 'customLinks',
+            SEARCH_ENGINE: 'searchEngine',
+            WALLPAPER_TYPE: 'wallpaperType',
+            WALLPAPER_INDEX: 'wallpaperIndex',
+            HYPEROS_EFFECT: 'hyperosEffect',
+            CURRENT_ENGINE: 'currentEngine',
+            BG_STYLE: 'backgroundStyle',
+            GRADIENT_SPEED: 'gradientSpeed',
+            GRADIENT_OPACITY: 'gradientOpacity',
+            GRADIENT_MIX_RATIO: 'gradientMixRatio',
+            THEME: 'theme'
+        };
+
+        // 壁纸类型
+        const WALLPAPER_TYPE = {
+            IMAGE: 'image',
+            VIDEO: 'video',
+            GRADIENT: 'gradient'
+        };
+
+        // 初始化变量
+        let wallpaperIndex = 0;
+        let wallpaperType = WALLPAPER_TYPE.IMAGE;
+        const wallpapers = [
+            '/IMG/0.png',
+            '/IMG/1.png',
+            '/IMG/2.png',
+            '/IMG/3.png'
+        ];
+
+        // 搜索相关变量
+        let engineUrl = localStorage.getItem(CONFIG_KEYS.SEARCH_ENGINE) || "https://www.baidu.com/s?wd=";
+        let currentEngineText = localStorage.getItem(CONFIG_KEYS.CURRENT_ENGINE) || "百度";
+
+        // 动态渐变背景相关变量
+        let gradientBG = {
+            canvas: null,
+            gl: null,
+            program: null,
+            animationId: null,
+            uTimeLocation: null,
+            bgColorLocation: null,
+            mixColorRatioLocation: null,
+            speedLocation: null,
+            opacityLocation: null,
+            bgColor: [0.058, 0.09, 0.164],
+            init: function () {
+                try {
+                    // 获取Canvas元素
+                    this.canvas = document.getElementById('bg-canvas');
+                    this.gl = this.canvas.getContext('webgl');
+
+                    if (!this.gl) {
+                        console.error('WebGL上下文获取失败');
+                        return;
+                    }
+
+                    // 调整Canvas大小以适应窗口
+                    const resizeCanvas = () => {
+                        this.canvas.width = window.innerWidth;
+                        this.canvas.height = window.innerHeight;
+                        if (this.gl) {
+                            this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
+                        }
+                    };
+
+                    window.addEventListener('resize', resizeCanvas);
+                    resizeCanvas();
+
+                    // 顶点着色器
+                    const vertexShaderSource = `
+                        precision highp float;
+                        attribute vec3 position;
+                        varying vec2 uv;
+                        
+                        void main() {
+                            uv = position.xy * 0.5 + 0.5;
+                            gl_Position = vec4(position, 1);
+                        }
+                    `;
+
+                    // 片段着色器
+                    const fragmentShaderSource = `
+                        precision highp float;
+                        
+                        const int COLOR_COUNT = 4;
+                        const float MIX_COLOR_SIZE = 0.5;
+                        const float MAX_MIX_BRIGHT = 0.5;
+                        uniform float mixColorRatio;
+                        uniform vec3 bgColor;
+                        uniform vec3 colors[COLOR_COUNT];
+                        uniform vec2 colorCenter[COLOR_COUNT];
+                        uniform float uTime;
+                        uniform float speed;
+                        uniform float opacity;
+                        
+                        uniform bool fadeOpacityOverlap;
+                        uniform bool smoothColorGradient;
+                        uniform bool dynamicColorCenter;
+                        
+                        varying vec2 uv;
+                        
+                        // 平滑插值函数
+                        float fade(float t) {
+                            return t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+                        }
+                        
+                        // 线性插值函数
+                        float lerp(float a, float b, float t) {
+                            return a + t * (b - a);
+                        }
+                        
+                        // 伪随机梯度生成函数
+                        float gradient(float x) {
+                            return fract(sin(x) * 43758.5453) - 0.5;
+                        }
+                        
+                        // perlin噪声函数
+                        float noise(float x) {
+                            float i = floor(x);
+                            float f = x - i;
+                            float u = fade(f);
+                    
+                            float grad1 = gradient(i);
+                            float grad2 = gradient(i + 1.0);
+                    
+                            return lerp(grad1 * f, grad2 * (f - 1.0), u);
+                        }
+                        
+                        // 计算量较小的平滑插值函数
+                        float fade2(float p) {
+                            return p * p * (3.0 - 2.0 * p);
+                        }
+                        
+                        // 使x大于MAX_MIX_BRIGHT时增速减慢的平滑函数
+                        float slowdown(float x, float k) {
+                            float z = x - MAX_MIX_BRIGHT;
+                            return z < 0.0 ? x : (1.0 - exp(-k * z)) + MAX_MIX_BRIGHT;
+                        }
+                        
+                        float getRate(float d) {
+                            if (d >= MIX_COLOR_SIZE) {
+                                return 0.0;
+                            }
+                            if (smoothColorGradient) {
+                                return fade2((MIX_COLOR_SIZE - d) * 2.0) * 0.5;
+                            } else {
+                                return MIX_COLOR_SIZE - d;
+                            }
+                        }
+                        
+                        vec3 mixColorsNoSmooth() {
+                            float tRate = 0.0;
+                            float rates[COLOR_COUNT];
+                            for (int i = 0; i < COLOR_COUNT; i++) {
+                                vec2 offset = dynamicColorCenter ? 
+                                    vec2(noise(uTime * speed + colorCenter[i][0] * 3.0 + float(i)), 
+                                        noise(uTime * speed + colorCenter[i][1] * 7.0 + float(i))) 
+                                    : vec2(0.0);
+                                float d = distance(uv + offset, colorCenter[i]);
+                                rates[i] = getRate(d);
+                                tRate += rates[i];
+                            }
+                            float tRateMultipler = tRate > MAX_MIX_BRIGHT ? MAX_MIX_BRIGHT / tRate : 1.0;
+                            vec3 mixColor = bgColor * (1.0 - (tRate * tRateMultipler));
+                            for (int i = 0; i < COLOR_COUNT; i++) {
+                                mixColor += colors[i] * rates[i] * tRateMultipler;
+                            }
+                            return mix(bgColor, mixColor, mixColorRatio * opacity);
+                        }
+                        
+                        vec3 mixColorsSmooth() {
+                            float tRate = 0.0;
+                            float rates[COLOR_COUNT];
+                            vec3 mixColor = vec3(0.0);
+                            for (int i = 0; i < COLOR_COUNT; i++) {
+                                vec2 offset = dynamicColorCenter ? 
+                                    vec2(noise(uTime * speed + colorCenter[i][0] * 3.0 + float(i)), 
+                                        noise(uTime * speed + colorCenter[i][1] * 7.0 + float(i))) 
+                                    : vec2(0.0);
+                                float d = distance(uv + offset, colorCenter[i]);
+                                rates[i] = getRate(d);
+                                mixColor += colors[i] * rates[i];
+                                tRate += rates[i];
+                            }
+                            float mRate = fadeOpacityOverlap ? slowdown(tRate, 1.3) : tRate;
+                            tRate = tRate == 0.0 ? 1.0 : tRate;
+                            mixColor = mixColor / tRate * mRate * mixColorRatio * opacity;
+                            mixColor += bgColor * (1.0 - mRate * mixColorRatio * opacity);
+                            return mixColor;
+                        }
+                        
+                        void main() {
+                            gl_FragColor = vec4(fadeOpacityOverlap ? mixColorsSmooth() : mixColorsNoSmooth(), 1);
+                        }
+                    `;
+
+                    // 编译着色器
+                    function compileShader(gl, source, type) {
+                        const shader = gl.createShader(type);
+                        gl.shaderSource(shader, source);
+                        gl.compileShader(shader);
+
+                        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                            console.error('Shader编译错误:', gl.getShaderInfoLog(shader));
+                            gl.deleteShader(shader);
+                            return null;
+                        }
+
+                        return shader;
+                    }
+
+                    // 创建着色器程序
+                    function createProgram(gl, vertexShader, fragmentShader) {
+                        const program = gl.createProgram();
+                        gl.attachShader(program, vertexShader);
+                        gl.attachShader(program, fragmentShader);
+                        gl.linkProgram(program);
+
+                        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                            console.error('Program链接错误:', gl.getProgramInfoLog(program));
+                            return null;
+                        }
+
+                        return program;
+                    }
+
+                    // 设置顶点数据
+                    function setupGeometry(gl, program) {
+                        const vertices = new Float32Array([
+                            -1.0, -1.0, 0.0,
+                            1.0, -1.0, 0.0,
+                            -1.0, 1.0, 0.0,
+                            -1.0, 1.0, 0.0,
+                            1.0, -1.0, 0.0,
+                            1.0, 1.0, 0.0
+                        ]);
+
+                        const vertexBuffer = gl.createBuffer();
+                        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+                        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+                        const positionLocation = gl.getAttribLocation(program, 'position');
+                        gl.enableVertexAttribArray(positionLocation);
+                        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+                    }
+
+                    // 编译着色器
+                    const vertexShader = compileShader(this.gl, vertexShaderSource, this.gl.VERTEX_SHADER);
+                    const fragmentShader = compileShader(this.gl, fragmentShaderSource, this.gl.FRAGMENT_SHADER);
+
+                    if (!vertexShader || !fragmentShader) {
+                        console.error('着色器编译失败');
+                        return;
+                    }
+
+                    // 创建着色器程序
+                    this.program = createProgram(this.gl, vertexShader, fragmentShader);
+                    if (!this.program) {
+                        console.error('着色器程序创建失败');
+                        return;
+                    }
+
+                    this.gl.useProgram(this.program);
+
+                    // 设置顶点数据
+                    setupGeometry(this.gl, this.program);
+
+                    // 获取uniform位置
+                    this.uTimeLocation = this.gl.getUniformLocation(this.program, 'uTime');
+                    this.bgColorLocation = this.gl.getUniformLocation(this.program, 'bgColor');
+                    this.mixColorRatioLocation = this.gl.getUniformLocation(this.program, 'mixColorRatio');
+                    this.speedLocation = this.gl.getUniformLocation(this.program, 'speed');
+                    this.opacityLocation = this.gl.getUniformLocation(this.program, 'opacity');
+                    const fadeOpacityOverlapLocation = this.gl.getUniformLocation(this.program, 'fadeOpacityOverlap');
+                    const smoothColorGradientLocation = this.gl.getUniformLocation(this.program, 'smoothColorGradient');
+                    const dynamicColorCenterLocation = this.gl.getUniformLocation(this.program, 'dynamicColorCenter');
+
+                    // 设置颜色
+                    const colors = [
+                        [0.31593, 0.03235, 0.72251],   // 紫色
+                        [0.83077, 0.00662, 0.20932],   // 红色
+                        [0.86558, 0.38955, 0.01461],   // 橙色
+                        [0.21993, 0.49608, 0.39866]    // 青色
+                    ];
+
+                    const colorCenters = [
+                        [0.25, 0.25],
+                        [0.75, 0.25],
+                        [0.25, 0.75],
+                        [0.75, 0.75]
+                    ];
+
+                    // 设置初始uniform值
+                    this.gl.uniform3fv(this.gl.getUniformLocation(this.program, 'colors[0]'), colors[0]);
+                    this.gl.uniform3fv(this.gl.getUniformLocation(this.program, 'colors[1]'), colors[1]);
+                    this.gl.uniform3fv(this.gl.getUniformLocation(this.program, 'colors[2]'), colors[2]);
+                    this.gl.uniform3fv(this.gl.getUniformLocation(this.program, 'colors[3]'), colors[3]);
+
+                    this.gl.uniform2fv(this.gl.getUniformLocation(this.program, 'colorCenter[0]'), colorCenters[0]);
+                    this.gl.uniform2fv(this.gl.getUniformLocation(this.program, 'colorCenter[1]'), colorCenters[1]);
+                    this.gl.uniform2fv(this.gl.getUniformLocation(this.program, 'colorCenter[2]'), colorCenters[2]);
+                    this.gl.uniform2fv(this.gl.getUniformLocation(this.program, 'colorCenter[3]'), colorCenters[3]);
+
+                    this.gl.uniform3fv(this.bgColorLocation, this.bgColor);
+                    this.gl.uniform1f(this.mixColorRatioLocation, 0.7);
+                    this.gl.uniform1f(this.opacityLocation, 0.7);
+                    this.gl.uniform1f(this.speedLocation, 0.5);
+                    this.gl.uniform1i(fadeOpacityOverlapLocation, true);
+                    this.gl.uniform1i(smoothColorGradientLocation, true);
+                    this.gl.uniform1i(dynamicColorCenterLocation, true);
+
+                    this.startTime = Date.now();
+                } catch (error) {
+                    console.error('渐变背景初始化错误:', error);
+                }
+            },
+            start: function () {
+                if (!this.animationId) {
+                    this.render();
+                }
+            },
+            stop: function () {
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+            },
+            setSpeed: function (speed) {
+                if (this.gl) {
+                    this.gl.uniform1f(this.speedLocation, speed);
+                }
+            },
+            setOpacity: function (opacity) {
+                if (this.gl) {
+                    this.gl.uniform1f(this.opacityLocation, opacity);
+                }
+            },
+            setMixRatio: function (ratio) {
+                if (this.gl) {
+                    this.gl.uniform1f(this.mixColorRatioLocation, ratio);
+                }
+            },
+            setTheme: function (isLight) {
+                if (isLight) {
+                    this.bgColor = [0.9, 0.9, 0.95];
+                } else {
+                    this.bgColor = [0.058, 0.09, 0.164];
+                }
+
+                if (this.gl) {
+                    this.gl.uniform3fv(this.bgColorLocation, this.bgColor);
+                }
+            },
+            render: function () {
+                if (!this.gl) return;
+
+                try {
+                    const currentTime = Date.now();
+                    const elapsedTime = (currentTime - this.startTime) * 0.001;
+
+                    this.gl.uniform1f(this.uTimeLocation, elapsedTime);
+                    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+                    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+
+                    this.animationId = requestAnimationFrame(this.render.bind(this));
+                } catch (error) {
+                    console.error('渐变背景渲染错误:', error);
+                    this.stop();
+                }
+            }
+        };
+
+        // 页面加载时初始化
+        window.onload = function () {
+            // 初始化动态渐变背景
+            gradientBG.init();
+
+            // 加载设置
+            loadSettings();
+
+            // 更新时间
+            updateTime();
+            setInterval(updateTime, 1000);
+
+            // 设置右键菜单事件
+            document.addEventListener('contextmenu', function (e) {
+                e.preventDefault();
+                showContextMenu(e.clientX, e.clientY);
+            });
+
+            document.addEventListener('click', function () {
+                hideContextMenu();
+            });
+
+            // 初始化搜索功能
+            initSearch();
+        };
+
+        // 设置背景样式
+        function setBackgroundStyle(style) {
+            // 更新UI
+            document.querySelectorAll('.bg-style-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            document.querySelector(`.bg-style-option[data-style="${style}"]`).classList.add('active');
+
+            // 保存设置
+            saveConfig(CONFIG_KEYS.BG_STYLE, style);
+
+            // 应用样式
+            wallpaperType = style;
+
+            // 隐藏所有背景元素
+            document.getElementById('video-bg-container').style.display = 'none';
+            document.getElementById('image-bg').style.display = 'none';
+            document.getElementById('bg-canvas').style.display = 'none';
+
+            // 停止渐变动画
+            gradientBG.stop();
+
+            // 根据选择的样式显示对应的背景
+            if (style === 'image') {
+                document.getElementById('image-bg').style.display = 'block';
+            } else if (style === 'video') {
+                document.getElementById('video-bg-container').style.display = 'block';
+            } else if (style === 'gradient') {
+                document.getElementById('bg-canvas').style.display = 'block';
+                gradientBG.start();
+            }
+        }
+
+        // 初始化搜索功能
+        function initSearch() {
+            const currentEngine = document.getElementById('currentEngine');
+            const engineOptions = document.getElementById('engineOptions');
+
+            // 设置当前搜索引擎显示
+            currentEngine.textContent = currentEngineText;
+
+            // 创建引擎选项按钮
+            const engines = [
+                { name: "百度", url: "https://www.baidu.com/s?wd=" },
+                { name: "必应", url: "https://www.bing.com/search?q=" },
+                { name: "360", url: "https://www.so.com/s?q=" },
+                { name: "搜狗", url: "https://www.sogou.com/web?query=" },
+                { name: "吾爱破解", url: "https://www.bing.com/search?q=site:52pojie.cn " },
+                { name: "哔哩", url: "https://search.bilibili.com/all?keyword=" },
+                { name: "GitHub", url: "https://GitHub.com/search?q=" },
+                { name: "Gitee", url: "https://so.gitee.com/?q=" },
+                { name: "谷歌", url: "https://www.google.com/search?q=" },
+                { name: "Yandex", url: "https://yandex.com/search/touch/?text=" },
+                { name: "网易", url: "http://music.163.com/song/media/outer/url?id={q}.mp3" }
+            ];
+
+            engines.forEach(engine => {
+                const btn = document.createElement('button');
+                btn.setAttribute('data-engine', engine.url);
+                btn.textContent = engine.name;
+                engineOptions.appendChild(btn);
+            });
+
+            // 添加引擎切换事件
+            currentEngine.addEventListener('click', () => {
+                engineOptions.classList.toggle('show');
+            });
+
+            document.querySelectorAll('.engine-options button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    engineUrl = btn.getAttribute('data-engine');
+                    currentEngineText = btn.textContent;
+                    currentEngine.textContent = currentEngineText;
+                    localStorage.setItem(CONFIG_KEYS.SEARCH_ENGINE, engineUrl);
+                    localStorage.setItem(CONFIG_KEYS.CURRENT_ENGINE, currentEngineText);
+                    engineOptions.classList.remove('show');
+                });
+            });
+
+            // 添加搜索事件
+            document.getElementById('searchButton').addEventListener('click', performSearch);
+            document.getElementById('searchInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+        }
+
+        // 执行搜索
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.trim();
+            if (!query) return;
+
+            let url;
+            if (engineUrl.includes('{q}')) {
+                url = engineUrl.replace('{q}', encodeURIComponent(query));
+            } else {
+                url = engineUrl + encodeURIComponent(query);
+            }
+            window.open(url, '_blank');
+        }
+
+        // 更新时间显示
+        function updateTime() {
+            const clockElement = document.getElementById('clock');
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            clockElement.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+
+        // 加载用户设置
+        function loadSettings() {
+            // 加载背景图片
+            const savedBackground = localStorage.getItem(CONFIG_KEYS.BG_IMAGE);
+            if (savedBackground) {
+                document.querySelector('.image-bg').style.backgroundImage = `url('${savedBackground}')`;
+            }
+
+            // 加载视频背景
+            const savedVideo = localStorage.getItem(CONFIG_KEYS.VIDEO_BG);
+            if (savedVideo) {
+                const video = document.getElementById('video-bg');
+                video.innerHTML = `<source src="${savedVideo}" type="video/mp4">`;
+                video.load();
+            }
+
+            // 加载视频静音状态
+            const savedMuted = localStorage.getItem(CONFIG_KEYS.VIDEO_MUTED);
+            const video = document.getElementById('video-bg');
+            if (savedMuted === 'true') {
+                video.muted = true;
+                document.getElementById('muteButton').textContent = '取消静音';
+            } else {
+                video.muted = false;
+                document.getElementById('muteButton').textContent = '静音';
+            }
+
+            // 加载壁纸类型
+            wallpaperType = localStorage.getItem(CONFIG_KEYS.WALLPAPER_TYPE) || WALLPAPER_TYPE.IMAGE;
+            updateWallpaperVisibility();
+
+            // 加载壁纸索引
+            wallpaperIndex = parseInt(localStorage.getItem(CONFIG_KEYS.WALLPAPER_INDEX) || '0');
+
+            // 加载快捷链接
+            const savedLinks = JSON.parse(localStorage.getItem(CONFIG_KEYS.CUSTOM_LINKS)) || [];
+            const linksContainer = document.getElementById('links');
+            savedLinks.forEach(link => {
+                const newLink = document.createElement('a');
+                newLink.href = link.url;
+                newLink.target = '_blank';
+                newLink.innerHTML = `<img src="${link.icon}" alt="${link.text}"><br>${link.text}`;
+                newLink.style.setProperty('--link-index', savedLinks.indexOf(link));
+                linksContainer.appendChild(newLink);
+            });
+
+            // 加载背景样式设置
+            const savedBgStyle = localStorage.getItem(CONFIG_KEYS.BG_STYLE) || 'image';
+            setBackgroundStyle(savedBgStyle);
+
+            // 加载渐变背景设置
+            const savedGradientSpeed = localStorage.getItem(CONFIG_KEYS.GRADIENT_SPEED) || 0.5;
+            document.getElementById('gradient-speed').value = savedGradientSpeed;
+            gradientBG.setSpeed(parseFloat(savedGradientSpeed));
+
+            const savedGradientOpacity = localStorage.getItem(CONFIG_KEYS.GRADIENT_OPACITY) || 0.7;
+            document.getElementById('gradient-opacity').value = savedGradientOpacity;
+            gradientBG.setOpacity(parseFloat(savedGradientOpacity));
+
+            const savedGradientMixRatio = localStorage.getItem(CONFIG_KEYS.GRADIENT_MIX_RATIO) || 0.7;
+            document.getElementById('gradient-mix-ratio').value = savedGradientMixRatio;
+            gradientBG.setMixRatio(parseFloat(savedGradientMixRatio));
+
+            // 加载主题设置
+            const savedTheme = localStorage.getItem(CONFIG_KEYS.THEME) || 'dark';
+            if (savedTheme === 'light') {
+                document.body.classList.remove('dark-theme');
+                document.body.classList.add('light-theme');
+                document.getElementById('gradient-theme-toggle').textContent = '切换为深色主题';
+                gradientBG.setTheme(true);
+            } else {
+                document.body.classList.remove('light-theme');
+                document.body.classList.add('dark-theme');
+                document.getElementById('gradient-theme-toggle').textContent = '切换为浅色主题';
+                gradientBG.setTheme(false);
+            }
+        }
+
+        // 保存配置
+        function saveConfig(key, value) {
+            localStorage.setItem(key, value);
+        }
+
+        // 切换壁纸可见性
+        function updateWallpaperVisibility() {
+            const videoContainer = document.getElementById('video-bg-container');
+            const imageBg = document.querySelector('.image-bg');
+
+            if (wallpaperType === WALLPAPER_TYPE.VIDEO) {
+                videoContainer.style.display = 'block';
+                imageBg.style.display = 'none';
+            } else {
+                videoContainer.style.display = 'none';
+                imageBg.style.display = 'block';
+            }
+        }
+
+        // 切换壁纸
+        function changeWallpaper() {
+            if (wallpaperType === WALLPAPER_TYPE.IMAGE) {
+                wallpaperIndex = (wallpaperIndex + 1) % wallpapers.length;
+                const newBg = wallpapers[wallpaperIndex];
+                document.querySelector('.image-bg').style.backgroundImage = `url('${newBg}')`;
+                saveConfig(CONFIG_KEYS.BG_IMAGE, newBg);
+                saveConfig(CONFIG_KEYS.WALLPAPER_INDEX, wallpaperIndex);
+            }
+        }
+
+        // 更改图片背景
+        function changeBackground() {
+            const bgImage = document.getElementById('bgImage').value;
+            if (bgImage) {
+                wallpaperType = WALLPAPER_TYPE.IMAGE;
+                document.querySelector('.image-bg').style.backgroundImage = `url('${bgImage}')`;
+                saveConfig(CONFIG_KEYS.BG_IMAGE, bgImage);
+                saveConfig(CONFIG_KEYS.WALLPAPER_TYPE, wallpaperType);
+                updateWallpaperVisibility();
+                alert('背景图片已更新！');
+            }
+        }
+
+        // 更改视频背景
+        function changeVideoBackground() {
+            const videoUrl = document.getElementById('videoBg').value;
+            if (videoUrl) {
+                wallpaperType = WALLPAPER_TYPE.VIDEO;
+                const video = document.getElementById('video-bg');
+                video.innerHTML = `<source src="${videoUrl}" type="video/mp4">`;
+                video.load();
+                saveConfig(CONFIG_KEYS.VIDEO_BG, videoUrl);
+                saveConfig(CONFIG_KEYS.WALLPAPER_TYPE, wallpaperType);
+                updateWallpaperVisibility();
+                alert('视频背景已更新！');
+            }
+        }
+
+        // 切换视频静音
+        function toggleVideoMute() {
+            const video = document.getElementById('video-bg');
+            video.muted = !video.muted;
+            saveConfig(CONFIG_KEYS.VIDEO_MUTED, video.muted);
+            document.getElementById('muteButton').textContent = video.muted ? '取消静音' : '静音';
+        }
+
+        // 添加快捷链接
+        function addLink() {
+            const linkUrl = document.getElementById('linkUrl').value;
+            const linkText = document.getElementById('linkText').value;
+            const linkIcon = document.getElementById('linkIcon').value;
+
+            if (linkUrl && linkText && linkIcon) {
+                const linksContainer = document.getElementById('links');
+                const newLink = document.createElement('a');
+                newLink.href = linkUrl;
+                newLink.target = '_blank';
+                newLink.innerHTML = `<img src="${linkIcon}" alt="${linkText}"><br>${linkText}`;
+                newLink.style.setProperty('--link-index', linksContainer.children.length);
+                linksContainer.appendChild(newLink);
+
+                // 保存到本地存储
+                const savedLinks = JSON.parse(localStorage.getItem(CONFIG_KEYS.CUSTOM_LINKS)) || [];
+                savedLinks.push({ url: linkUrl, text: linkText, icon: linkIcon });
+                saveConfig(CONFIG_KEYS.CUSTOM_LINKS, JSON.stringify(savedLinks));
+
+                // 清空输入框
+                document.getElementById('linkUrl').value = '';
+                document.getElementById('linkText').value = '';
+                document.getElementById('linkIcon').value = '';
+
+                alert('快捷链接已添加！');
+            }
+        }
+
+        // 导出设置
+        function exportSettings() {
+            const settings = {
+                backgroundImage: localStorage.getItem(CONFIG_KEYS.BG_IMAGE),
+                videoBackground: localStorage.getItem(CONFIG_KEYS.VIDEO_BG),
+                videoMuted: localStorage.getItem(CONFIG_KEYS.VIDEO_MUTED),
+                customLinks: JSON.parse(localStorage.getItem(CONFIG_KEYS.CUSTOM_LINKS)) || [],
+                searchEngine: localStorage.getItem(CONFIG_KEYS.SEARCH_ENGINE),
+                wallpaperType: localStorage.getItem(CONFIG_KEYS.WALLPAPER_TYPE),
+                wallpaperIndex: localStorage.getItem(CONFIG_KEYS.WALLPAPER_INDEX),
+                currentEngine: localStorage.getItem(CONFIG_KEYS.CURRENT_ENGINE),
+                backgroundStyle: localStorage.getItem(CONFIG_KEYS.BG_STYLE),
+                gradientSpeed: localStorage.getItem(CONFIG_KEYS.GRADIENT_SPEED),
+                gradientOpacity: localStorage.getItem(CONFIG_KEYS.GRADIENT_OPACITY),
+                gradientMixRatio: localStorage.getItem(CONFIG_KEYS.GRADIENT_MIX_RATIO),
+                theme: localStorage.getItem(CONFIG_KEYS.THEME)
+            };
+
+            const blob = new Blob([JSON.stringify(settings)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'homepage_settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // 导入设置
+        function importSettings(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    try {
+                        const settings = JSON.parse(e.target.result);
+
+                        // 应用设置
+                        if (settings.backgroundImage) {
+                            saveConfig(CONFIG_KEYS.BG_IMAGE, settings.backgroundImage);
+                            document.querySelector('.image-bg').style.backgroundImage = `url('${settings.backgroundImage}')`;
+                        }
+
+                        if (settings.videoBackground) {
+                            saveConfig(CONFIG_KEYS.VIDEO_BG, settings.videoBackground);
+                            const video = document.getElementById('video-bg');
+                            video.innerHTML = `<source src="${settings.videoBackground}" type="video/mp4">`;
+                            video.load();
+                        }
+
+                        if (settings.videoMuted) {
+                            saveConfig(CONFIG_KEYS.VIDEO_MUTED, settings.videoMuted);
+                            const video = document.getElementById('video-bg');
+                            video.muted = settings.videoMuted === 'true';
+                            document.getElementById('muteButton').textContent = video.muted ? '取消静音' : '静音';
+                        }
+
+                        if (settings.customLinks) {
+                            const linksContainer = document.getElementById('links');
+                            // 先移除所有自定义链接（保留初始链接）
+                            const customLinks = document.querySelectorAll('#links a.custom-link');
+                            customLinks.forEach(link => link.remove());
+
+                            // 添加导入的链接
+                            settings.customLinks.forEach(link => {
+                                const newLink = document.createElement('a');
+                                newLink.href = link.url;
+                                newLink.target = '_blank';
+                                newLink.innerHTML = `<img src="${link.icon}" alt="${link.text}"><br>${link.text}`;
+                                newLink.classList.add('custom-link');
+                                newLink.style.setProperty('--link-index', linksContainer.children.length);
+                                linksContainer.appendChild(newLink);
+                            });
+                            saveConfig(CONFIG_KEYS.CUSTOM_LINKS, JSON.stringify(settings.customLinks));
+                        }
+
+                        if (settings.searchEngine) {
+                            saveConfig(CONFIG_KEYS.SEARCH_ENGINE, settings.searchEngine);
+                            engineUrl = settings.searchEngine;
+                        }
+
+                        if (settings.currentEngine) {
+                            saveConfig(CONFIG_KEYS.CURRENT_ENGINE, settings.currentEngine);
+                            document.getElementById('currentEngine').textContent = settings.currentEngine;
+                        }
+
+                        if (settings.wallpaperType) {
+                            saveConfig(CONFIG_KEYS.WALLPAPER_TYPE, settings.wallpaperType);
+                            wallpaperType = settings.wallpaperType;
+                            updateWallpaperVisibility();
+                        }
+
+                        if (settings.wallpaperIndex) {
+                            saveConfig(CONFIG_KEYS.WALLPAPER_INDEX, settings.wallpaperIndex);
+                            wallpaperIndex = parseInt(settings.wallpaperIndex);
+                        }
+
+                        if (settings.backgroundStyle) {
+                            setBackgroundStyle(settings.backgroundStyle);
+                        }
+
+                        if (settings.gradientSpeed) {
+                            saveConfig(CONFIG_KEYS.GRADIENT_SPEED, settings.gradientSpeed);
+                            document.getElementById('gradient-speed').value = settings.gradientSpeed;
+                            gradientBG.setSpeed(parseFloat(settings.gradientSpeed));
+                        }
+
+                        if (settings.gradientOpacity) {
+                            saveConfig(CONFIG_KEYS.GRADIENT_OPACITY, settings.gradientOpacity);
+                            document.getElementById('gradient-opacity').value = settings.gradientOpacity;
+                            gradientBG.setOpacity(parseFloat(settings.gradientOpacity));
+                        }
+
+                        if (settings.gradientMixRatio) {
+                            saveConfig(CONFIG_KEYS.GRADIENT_MIX_RATIO, settings.gradientMixRatio);
+                            document.getElementById('gradient-mix-ratio').value = settings.gradientMixRatio;
+                            gradientBG.setMixRatio(parseFloat(settings.gradientMixRatio));
+                        }
+
+                        if (settings.theme) {
+                            saveConfig(CONFIG_KEYS.THEME, settings.theme);
+                            if (settings.theme === 'light') {
+                                document.body.classList.remove('dark-theme');
+                                document.body.classList.add('light-theme');
+                                document.getElementById('gradient-theme-toggle').textContent = '切换为深色主题';
+                                gradientBG.setTheme(true);
+                            } else {
+                                document.body.classList.remove('light-theme');
+                                document.body.classList.add('dark-theme');
+                                document.getElementById('gradient-theme-toggle').textContent = '切换为浅色主题';
+                                gradientBG.setTheme(false);
+                            }
+                        }
+
+                        alert('设置导入成功！');
+                    } catch (error) {
+                        alert('导入设置失败：文件格式不正确');
+                        console.error(error);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // 重置设置
+        function resetSettings() {
+            if (confirm('确定要重置所有设置吗？此操作不可撤销。')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // 切换日志显示
+        function toggleLogs() {
+            const logsPopup = document.getElementById('logsPopup');
+            const overlay = document.getElementById('logsOverlay');
+            const isVisible = logsPopup.style.display === 'block';
+            logsPopup.style.display = isVisible ? 'none' : 'block';
+            overlay.style.display = isVisible ? 'none' : 'block';
+        }
+
+        // 切换设置显示
+        function toggleSettings() {
+            const popup = document.getElementById('settingsPopup');
+            const overlay = document.getElementById('overlay');
+            const isVisible = popup.style.display === 'block';
+            popup.style.display = isVisible ? 'none' : 'block';
+            overlay.style.display = isVisible ? 'none' : 'block';
+        }
+
+        // 显示右键菜单
+        function showContextMenu(x, y) {
+            const menu = document.getElementById('contextMenu');
+            menu.style.display = 'block';
+            menu.style.left = `${x}px`;
+            menu.style.top = `${y}px`;
+        }
+
+        // 隐藏右键菜单
+        function hideContextMenu() {
+            document.getElementById('contextMenu').style.display = 'none';
+        }
+
+        // 打开添加快捷链接
+        function openAddLink() {
+            toggleSettings();
+            document.getElementById('linkUrl').focus();
+        }
+
+        // 打开壁纸设置
+        function openWallpaperSettings() {
+            toggleSettings();
+        }
+
+        // 切换主题函数（后面要改太白了）
+        function toggleTheme() {
+            const body = document.body;
+            const isLightTheme = body.classList.contains('light-theme');
+
+            if (isLightTheme) {
+                body.classList.remove('light-theme');
+                body.classList.add('dark-theme');
+                saveConfig(CONFIG_KEYS.THEME, 'dark');
+                gradientBG.setTheme(false);
+            } else {
+                body.classList.remove('dark-theme');
+                body.classList.add('light-theme');
+                saveConfig(CONFIG_KEYS.THEME, 'light');
+                gradientBG.setTheme(true);
+            }
+
+            // 更新设置按钮文本
+            document.getElementById('gradient-theme-toggle').textContent =
+                isLightTheme ? '切换为浅色主题' : '切换为深色主题';
+        }
+
+        // 切换甩尾动画
+        function toggleHyperOSEffect() {
+            const button = document.getElementById('hyperosToggle');
+            if (button.textContent === '关闭甩尾动画') {
+                button.textContent = '开启甩尾动画';
+                // 关闭动画逻辑
+            } else {
+                button.textContent = '关闭甩尾动画';
+                // 开启动画逻辑
+            }
+        }
+    </script>
+</body>
+<!--
+
+　　　　　／＞　　フ
+　　　　　|  　_　 _ l
+　 　　　／` ミ＿꒳ノ
+　　 　 /　　　 　 |
+　　　 /　 ヽ　　 ﾉ
+　 　 │　　|　|　|
+　／￣|　　 |　|　|
+　| (￣ヽ＿_ヽ_)__)
+　＼二つ
+
+-->
+</html>
